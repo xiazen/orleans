@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrleansClient", "OrleansCli
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrleansSiloHost", "OrleansSiloHost\OrleansSiloHost.csproj", "{76521F11-81CD-46D0-970F-2F972F67F626}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SiloTests", "SiloTests\SiloTests.csproj", "{9604458C-57CC-4D69-8B20-7CB1FD4FC273}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{76521F11-81CD-46D0-970F-2F972F67F626}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{76521F11-81CD-46D0-970F-2F972F67F626}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{76521F11-81CD-46D0-970F-2F972F67F626}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9604458C-57CC-4D69-8B20-7CB1FD4FC273}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9604458C-57CC-4D69-8B20-7CB1FD4FC273}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9604458C-57CC-4D69-8B20-7CB1FD4FC273}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9604458C-57CC-4D69-8B20-7CB1FD4FC273}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
