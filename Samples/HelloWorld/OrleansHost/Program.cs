@@ -1,7 +1,7 @@
 ﻿using System;
 using Orleans.Runtime.Configuration;
 
-namespace OrleansHost
+namespace OrleansSiloHost
 {
     /// <summary>
     /// Orleans test host

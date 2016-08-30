@@ -8,8 +8,8 @@
     <ProjectGuid>{76521F11-81CD-46D0-970F-2F972F67F626}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>OrleansHost</RootNamespace>
-    <AssemblyName>OrleansHost</AssemblyName>
+    <RootNamespace>OrleansSiloHost</RootNamespace>
+    <AssemblyName>OrleansSiloHost</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -61,10 +61,6 @@
     </Reference>
     <Reference Include="OrleansCounterControl, Version=1.2.3.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Orleans.CounterControl.1.2.3\lib\net451\OrleansCounterControl.exe</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="OrleansHost, Version=1.2.3.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Orleans.OrleansHost.1.2.3\lib\net451\OrleansHost.exe</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="OrleansProviders, Version=1.2.3.0, Culture=neutral, processorArchitecture=MSIL">
