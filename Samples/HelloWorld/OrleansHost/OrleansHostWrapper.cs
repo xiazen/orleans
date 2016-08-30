@@ -9,22 +9,21 @@ namespace OrleansHost
 {
     class OrleansHostWrapper
     {
-        private SiloHost siloHost;
+        private readonly SiloHost siloHost;
 
-        public OrleansHostWrapper(string[] args)
+        public OrleansHostWrapper(ClusterConfiguration config, string[] args)
         {
-            SiloArgs siloArgs = ParseArguments(args);
-            if (siloArgs != null)
+            var siloArgs = SiloArgs.ParseArguments(args);
+            if (siloArgs == null)
             {
-                Init(siloArgs);
+                return;
             }
-        }
 
-        private void Init(SiloArgs siloArgs)
-        {
-            var config = ClusterConfiguration.LocalhostPrimarySilo();
-            config.Globals.DeploymentId = siloArgs.DeploymentId;
-            config.AddMemoryStorageProvider();
+            if (siloArgs.DeploymentId != null)
+            {
+                config.Globals.DeploymentId = siloArgs.DeploymentId;
+            }
+
             siloHost = new SiloHost(siloArgs.SiloName, config);
             siloHost.LoadOrleansConfig();
         }
@@ -35,6 +34,7 @@ namespace OrleansHost
             if (siloHost == null)
             {
                 Console.Error.WriteLine("Failed to initialize Orleans silo due to bad command line arguments");
+                SiloArgs.PrintUsage();
                 return 1;
             }
 
@@ -80,83 +80,83 @@ namespace OrleansHost
             return 0;
         }
 
-        private SiloArgs ParseArguments(string[] args)
+        private class SiloArgs
         {
-            string deploymentId = null;
-            string siloName = null;
-
-            for (int i = 0; i < args.Length; i++)
+            public SiloArgs(string siloName, string deploymentId)
             {
-                string arg = args[i];
-                if (arg.StartsWith("-") || arg.StartsWith("/"))
+                this.DeploymentId = deploymentId;
+                this.SiloName = siloName;
+            }
+
+            public static SiloArgs ParseArguments(string[] args)
+            {
+                string deploymentId = null;
+                string siloName = null;
+
+                for (int i = 0; i < args.Length; i++)
                 {
-                    switch (arg.ToLowerInvariant())
+                    string arg = args[i];
+                    if (arg.StartsWith("-") || arg.StartsWith("/"))
                     {
-                        case "/?":
-                        case "/help":
-                        case "-?":
-                        case "-help":
-                            // Query usage help
-                            PrintUsage();
-                            return null;
-                        default:
+                        switch (arg.ToLowerInvariant())
+                        {
+                            case "/?":
+                            case "/help":
+                            case "-?":
+                            case "-help":
+                                // Query usage help
+                                PrintUsage();
+                                return null;
+                            default:
+                                Console.WriteLine($"Bad command line arguments supplied: {arg}");
+                                return null;
+                        }
+                    }
+                    else if (arg.Contains("="))
+                    {
+                        string[] parameters = arg.Split('=');
+                        if (String.IsNullOrEmpty(parameters[1]))
+                        {
                             Console.WriteLine($"Bad command line arguments supplied: {arg}");
                             return null;
+                        }
+                        switch (parameters[0].ToLowerInvariant())
+                        {
+                            case "deploymentid":
+                                deploymentId = parameters[1];
+                                break;
+                            case "name":
+                                siloName = parameters[1];
+                                break;
+                            default:
+                                Console.WriteLine($"Bad command line arguments supplied: {arg}");
+                                return null;
+                        }
                     }
-                }
-                else if (arg.Contains("="))
-                {
-                    string[] parameters = arg.Split('=');
-                    if (String.IsNullOrEmpty(parameters[1]))
+                    else
                     {
                         Console.WriteLine($"Bad command line arguments supplied: {arg}");
                         return null;
                     }
-                    switch (parameters[0].ToLowerInvariant())
-                    {
-                        case "deploymentid":
-                            deploymentId = parameters[1];
-                            break;
-                        case "name":
-                            siloName = parameters[1];
-                            break;
-                        default:
-                            Console.WriteLine($"Bad command line arguments supplied: {arg}");
-                            return null;
-                    }
                 }
-                else
-                {
-                    Console.WriteLine($"Bad command line arguments supplied: {arg}");
-                    return null;
-                }
+                // Default to machine name
+                siloName = siloName ?? Dns.GetHostName();
+                return new SiloArgs(siloName, deploymentId);
             }
-            // Default to machine name
-            siloName = siloName ?? Dns.GetHostName();
-            return new SiloArgs(siloName, deploymentId); 
-        }
 
-        public void PrintUsage()
-        {
-            string consoleAppName = Assembly.GetExecutingAssembly().GetName().Name;
-            Console.WriteLine(
-                $@"USAGE: {consoleAppName} [name=<siloName>] [deploymentId=<idString>] [/debug]
+            public static void PrintUsage()
+            {
+                string consoleAppName = Assembly.GetExecutingAssembly().GetName().Name;
+                Console.WriteLine(
+                    $@"USAGE: {consoleAppName} [name=<siloName>] [deploymentId=<idString>] [/debug]
                 Where:
                 name=<siloName> - Name of this silo (optional)
                 deploymentId=<idString> - Optionally override the deployment group this host instance should run in 
                 (otherwise will use the one in the configuration");
-        }
-    }
+            }
 
-    class SiloArgs
-    {
-        public SiloArgs(string siloName, string deploymentId)
-        {
-            this.DeploymentId = deploymentId;
-            this.SiloName = siloName;
+            public string SiloName { get; set; }
+            public string DeploymentId { get; set; }
         }
-
-        public string SiloName { get; set; }
-        public string DeploymentId { get; set; }
     }
 }

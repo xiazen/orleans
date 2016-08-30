@@ -1,4 +1,5 @@
 ﻿using System;
+using Orleans.Runtime.Configuration;
 
 namespace OrleansHost
 {
@@ -24,7 +25,11 @@ namespace OrleansHost
 
         private static int StartSilo(string[] args)
         {
-            hostWrapper = new OrleansHostWrapper(args);
+            // define the cluster configuration
+            var config = ClusterConfiguration.LocalhostPrimarySilo();
+            config.AddMemoryStorageProvider();
+
+            hostWrapper = new OrleansHostWrapper(config, args);
             return hostWrapper.Run();
         }
 
