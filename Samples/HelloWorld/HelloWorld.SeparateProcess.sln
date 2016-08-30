@@ -9,7 +9,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelloWorldGrains", "HelloWo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrleansClient", "OrleansClient\OrleansClient.csproj", "{05CB5084-F694-4CD1-A4A3-C08ABE8B4476}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrleansSiloHost", "OrleansHost\OrleansSiloHost.csproj", "{76521F11-81CD-46D0-970F-2F972F67F626}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrleansSiloHost", "OrleansSiloHost\OrleansSiloHost.csproj", "{76521F11-81CD-46D0-970F-2F972F67F626}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
