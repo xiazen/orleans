@@ -16,8 +16,27 @@ namespace OrleansClient
         static int Main(string[] args)
         {
             var config = ClientConfiguration.LocalhostSilo();
-            const int initializeAttemptsBeforeFailing = 5;
-            int attemp = 0;
+            try
+            {
+                InitializeWithRetries(config, initializeAttemptsBeforeFailing: 5);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Orleans client initialization failed failed due to {ex}");
+
+                Console.ReadLine();
+                return 1;
+            }
+
+            DoClientWork().Wait();
+            Console.WriteLine("Press Enter to terminate...");
+            Console.ReadLine();
+            return 0;
+        }
+
+        private static void InitializeWithRetries(ClientConfiguration config, int initializeAttemptsBeforeFailing)
+        {
+            int attempt = 0;
             while (true)
             {
                 try
@@ -26,29 +45,22 @@ namespace OrleansClient
                     Console.WriteLine("Client successfully connect to silo host");
                     break;
                 }
-                catch (SiloUnavailableException e)
+                catch (SiloUnavailableException)
                 {
-                    attemp++;
-                    if (attemp > initializeAttemptsBeforeFailing)
+                    attempt++;
+                    Console.WriteLine($"Attempt {attempt} of {initializeAttemptsBeforeFailing} failed to initialize the Orleans client.");
+                    if (attempt > initializeAttemptsBeforeFailing)
                     {
-                        Console.WriteLine("Connect to silo host failed due to " + e);
-                        Console.WriteLine("Press Enter to terminate...");
-                        Console.ReadLine();
-                        return 1;
+                        throw;
                     }
                     Thread.Sleep(TimeSpan.FromSeconds(2));
                 }
             }
-
-            DoClientWork().Wait();
-            Console.WriteLine("Press Enter to terminate...");
-            Console.ReadLine();
-            return 0;
-
         }
 
         private static async Task DoClientWork()
         {
+            // example of calling grains from the initialized client
             var friend = GrainClient.GrainFactory.GetGrain<IHello>(0);
             var response = await friend.SayHello("Good morning, my friend!");
             Console.WriteLine("\n\n{0}\n\n", response);

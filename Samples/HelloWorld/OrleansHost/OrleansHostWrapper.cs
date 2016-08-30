@@ -37,29 +37,27 @@ namespace OrleansHost
                 Console.Error.WriteLine("Failed to initialize Orleans silo due to bad command line arguments");
                 return 1;
             }
-            else
-                try
-                {
-                    siloHost.InitializeOrleansSilo();
 
-                    if (siloHost.StartOrleansSilo())
-                    {
-                        Console.WriteLine("Successfully started Orleans silo '{0}' as a {1} node.", siloHost.Name,
-                            siloHost.Type);
-                        return 0;
-                    }
-                    else
-                    {
-                        throw new OrleansException(string.Format("Failed to start Orleans silo '{0}' as a {1} node.",
-                            siloHost.Name, siloHost.Type));
-                    }
-                }
-                catch (Exception exc)
+            try
+            {
+                siloHost.InitializeOrleansSilo();
+
+                if (siloHost.StartOrleansSilo())
                 {
-                    siloHost.ReportStartupError(exc);
-                    Console.Error.WriteLine(exc);
-                    return 1;
+                    Console.WriteLine($"Successfully started Orleans silo '{siloHost.Name}' as a {siloHost.Type} node.");
+                    return 0;
                 }
+                else
+                {
+                    throw new OrleansException($"Failed to start Orleans silo '{siloHost.Name}' as a {siloHost.Type} node.");
+                }
+            }
+            catch (Exception exc)
+            {
+                siloHost.ReportStartupError(exc);
+                Console.Error.WriteLine(exc);
+                return 1;
+            }
         }
 
         public int Stop()
@@ -70,7 +68,7 @@ namespace OrleansHost
                 {
                     siloHost.StopOrleansSilo();
                     siloHost.Dispose();
-                    Console.WriteLine("Orleans silo '{0}' shutdown.", siloHost.Name);
+                    Console.WriteLine($"Orleans silo '{siloHost.Name}' shutdown.");
                 }
                 catch (Exception exc)
                 {
@@ -102,7 +100,7 @@ namespace OrleansHost
                             PrintUsage();
                             return null;
                         default:
-                            Console.WriteLine("Bad command line arguments supplied: " + arg);
+                            Console.WriteLine($"Bad command line arguments supplied: {arg}");
                             return null;
                     }
                 }
@@ -111,7 +109,7 @@ namespace OrleansHost
                     string[] parameters = arg.Split('=');
                     if (String.IsNullOrEmpty(parameters[1]))
                     {
-                        Console.WriteLine("Bad command line arguments supplied: " + arg);
+                        Console.WriteLine($"Bad command line arguments supplied: {arg}");
                         return null;
                     }
                     switch (parameters[0].ToLowerInvariant())
@@ -123,13 +121,13 @@ namespace OrleansHost
                             siloName = parameters[1];
                             break;
                         default:
-                            Console.WriteLine("Bad command line arguments supplied: " + arg);
+                            Console.WriteLine($"Bad command line arguments supplied: {arg}");
                             return null;
                     }
                 }
                 else
                 {
-                    Console.WriteLine("Bad command line arguments supplied: " + arg);
+                    Console.WriteLine($"Bad command line arguments supplied: {arg}");
                     return null;
                 }
             }
@@ -142,11 +140,11 @@ namespace OrleansHost
         {
             string consoleAppName = Assembly.GetExecutingAssembly().GetName().Name;
             Console.WriteLine(
-                @"USAGE: {0} [name=<siloName>] [deploymentId=<idString>] [/debug]
+                $@"USAGE: {consoleAppName} [name=<siloName>] [deploymentId=<idString>] [/debug]
                 Where:
                 name=<siloName> - Name of this silo (optional)
                 deploymentId=<idString> - Optionally override the deployment group this host instance should run in 
-                (otherwise will use the one in the configuration", consoleAppName);
+                (otherwise will use the one in the configuration");
         }
     }
 
@@ -158,12 +156,7 @@ namespace OrleansHost
             this.SiloName = siloName;
         }
 
-        public SiloArgs()
-        {
-        }
-
         public string SiloName { get; set; }
         public string DeploymentId { get; set; }
-
     }
 }

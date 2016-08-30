@@ -10,13 +10,15 @@ namespace OrleansHost
         private static OrleansHostWrapper hostWrapper;
         static int Main(string[] args)
         {
-            int returnCode = StartSilo(args);
+            int exitCode = StartSilo(args);
 
             Console.WriteLine("Press Enter to terminate...");
             Console.ReadLine();
 
-            returnCode += ShutdownSilo();
-            return returnCode;//either StartSilo or ShutdownSilo failed would result on a non-zero return code. 
+            exitCode += ShutdownSilo();
+
+            //either StartSilo or ShutdownSilo failed would result on a non-zero exit code. 
+            return exitCode;
         }
 
 
