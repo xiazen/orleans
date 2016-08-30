@@ -30,10 +30,8 @@ namespace OrleansHost
 
         public int Run()
         {
-            //if siloHost is not constructed yet due to wrong cmd param
             if (siloHost == null)
             {
-                Console.Error.WriteLine("Failed to initialize Orleans silo due to bad command line arguments");
                 SiloArgs.PrintUsage();
                 return 1;
             }
@@ -104,8 +102,7 @@ namespace OrleansHost
                             case "/help":
                             case "-?":
                             case "-help":
-                                // Query usage help
-                                PrintUsage();
+                                // Query usage help. Return null so that usage is printed
                                 return null;
                             default:
                                 Console.WriteLine($"Bad command line arguments supplied: {arg}");
