@@ -79,35 +79,50 @@ namespace Orleans.Runtime.Host
         private EventWaitHandle startupEvent;
         private EventWaitHandle shutdownEvent;
         private bool disposed;
-
+        private IServiceProvider internalServiceProvider;
+        private IServiceProvider externalServiceProvider;
+        private bool useCustomServiceProvider;
         /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="siloName">Name of this silo.</param>
-        public SiloHost(string siloName)
+        public SiloHost(string siloName, 
+            IServiceProvider internalServiceProvider = null, IServiceProvider externalServiceProvider = null,
+            bool useCustomServiceProvider = false)
         {
             Name = siloName;
             Type = Silo.SiloType.Secondary; // Default
             IsStarted = false;
+            this.internalServiceProvider = internalServiceProvider;
+            this.externalServiceProvider = externalServiceProvider;
         }
 
         /// <summary> Constructor </summary>
         /// <param name="siloName">Name of this silo.</param>
         /// <param name="config">Silo config that will be used to initialize this silo.</param>
-        public SiloHost(string siloName, ClusterConfiguration config) : this(siloName)
+        public SiloHost(string siloName, ClusterConfiguration config, 
+            IServiceProvider internalServiceProvider = null, IServiceProvider externalServiceProvider = null,
+            bool useCustomServiceProvider = false) : 
+            this(siloName)
         {
             SetSiloConfig(config);
+            this.internalServiceProvider = internalServiceProvider;
+            this.externalServiceProvider = externalServiceProvider;
         }
 
         /// <summary> Constructor </summary>
         /// <param name="siloName">Name of this silo.</param>
         /// <param name="configFile">Silo config file that will be used to initialize this silo.</param>
-        public SiloHost(string siloName, FileInfo configFile)
+        public SiloHost(string siloName, FileInfo configFile, 
+            IServiceProvider internalServiceProvider = null, IServiceProvider externalServiceProvider = null,
+            bool useCustomServiceProvider = false)
             : this(siloName)
         {
             ConfigFileName = configFile.FullName;
             var config = new ClusterConfiguration();
             config.LoadFromFile(ConfigFileName);
+            this.internalServiceProvider = internalServiceProvider;
+            this.externalServiceProvider = externalServiceProvider;
             SetSiloConfig(config);
         }
 
