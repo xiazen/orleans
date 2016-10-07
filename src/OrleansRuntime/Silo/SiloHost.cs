@@ -95,6 +95,7 @@ namespace Orleans.Runtime.Host
             IsStarted = false;
             this.internalServiceProvider = internalServiceProvider;
             this.externalServiceProvider = externalServiceProvider;
+            this.useCustomServiceProvider = useCustomServiceProvider;
         }
 
         /// <summary> Constructor </summary>
@@ -108,6 +109,7 @@ namespace Orleans.Runtime.Host
             SetSiloConfig(config);
             this.internalServiceProvider = internalServiceProvider;
             this.externalServiceProvider = externalServiceProvider;
+            this.useCustomServiceProvider = useCustomServiceProvider;
         }
 
         /// <summary> Constructor </summary>
@@ -123,6 +125,7 @@ namespace Orleans.Runtime.Host
             config.LoadFromFile(ConfigFileName);
             this.internalServiceProvider = internalServiceProvider;
             this.externalServiceProvider = externalServiceProvider;
+            this.useCustomServiceProvider = useCustomServiceProvider;
             SetSiloConfig(config);
         }
 
@@ -138,7 +141,7 @@ namespace Orleans.Runtime.Host
             try
             {
                 if (!ConfigLoaded) LoadOrleansConfig();
-                orleans = new Silo(Name, Type, Config);
+                orleans = new Silo(Name, Type, Config, internalServiceProvider, externalServiceProvider, useCustomServiceProvider);
                 logger.Info(ErrorCode.Runtime_Error_100288, "Successfully initialized Orleans silo '{0}' as a {1} node.", orleans.Name, orleans.Type);
             }
             catch (Exception exc)

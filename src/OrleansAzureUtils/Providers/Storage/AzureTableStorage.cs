@@ -39,7 +39,7 @@ namespace Orleans.Storage
     ///         DeleteStateOnClear="true"
     ///       />
     ///   &lt;/StorageProviders>
-    /// </code>a
+    /// </code>
     /// </example>
     public class AzureTableStorage : IStorageProvider, IRestExceptionDecoder
     {

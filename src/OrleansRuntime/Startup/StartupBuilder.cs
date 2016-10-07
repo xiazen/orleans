@@ -84,6 +84,7 @@ namespace Orleans.Runtime.Startup
             // Note: you can replace IGrainFactory with your own implementation, but 
             // we don't recommend it, in the aspect of performance and usability
             serviceCollection.AddSingleton<GrainFactory>((_sp) => new GrainFactory());
+            serviceCollection.AddSingleton<IGrainFactory>((sp) => (sp.GetService<GrainFactory>()));
             return serviceCollection;
         }
 

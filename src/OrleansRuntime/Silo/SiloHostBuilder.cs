@@ -71,7 +71,7 @@ namespace Orleans.Runtime.Startup
             IServiceProvider internalServiceProvider = StartupBuilder.RegisterAllSystemTypes(new ServiceCollection()).BuildServiceProvider();
             IServiceProvider externalServiceProvider = null;
             bool useCustomServiceProvider;
-            if (externalServiceConfigDelegates.Any())
+            if (externalServiceConfigDelegates != null)
             {
                 IServiceCollection externalCollection = null;
                 foreach (var configServiceDelegate in externalServiceConfigDelegates)
@@ -94,7 +94,8 @@ namespace Orleans.Runtime.Startup
                 externalServiceProvider = externalCollection.BuildServiceProvider();
             }
 
-            return new SiloHost(siloName, clusterConfiguration, internalServiceProvider, externalServiceProvider);
+            return new SiloHost(siloName, clusterConfiguration, internalServiceProvider, 
+                externalServiceProvider, useCustomServiceProvider);
         }
     }
 }
