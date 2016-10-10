@@ -12,6 +12,39 @@ namespace Orleans.Runtime.Startup
     /// </summary>
     internal class StartupBuilder
     {
+        internal static IServiceProvider ConfigureStartup(string startupTypeName, IServiceProvider internalServiceProvider,out bool usingCustomServiceProvider)
+        {
+            usingCustomServiceProvider = false;
+            IServiceCollection serviceCollection = new ServiceCollection();
+            ConfigureServicesBuilder servicesMethod = null;
+            Type startupType = null;
+
+            if (!String.IsNullOrWhiteSpace(startupTypeName))
+            {
+                startupType = Type.GetType(startupTypeName);
+                if (startupType == null)
+                {
+                    throw new InvalidOperationException($"Can not locate the type specified in the configuration file: '{startupTypeName}'.");
+                }
+
+                servicesMethod = FindConfigureServicesDelegate(startupType);
+                if (servicesMethod != null && !servicesMethod.MethodInfo.IsStatic)
+                {
+                    usingCustomServiceProvider = true;
+                }
+            }
+
+            RegisterSystemTypesWhichCanbeUsedByExternal(internalServiceProvider, serviceCollection);
+
+            if (usingCustomServiceProvider)
+            {
+                var instance = Activator.CreateInstance(startupType);
+                return servicesMethod.Build(instance, serviceCollection);
+            }
+
+            return serviceCollection.BuildServiceProvider();
+        }
+
         internal static IServiceProvider ConfigureStartup(string startupTypeName, out bool usingCustomServiceProvider)
         {
             usingCustomServiceProvider = false;
@@ -34,7 +67,7 @@ namespace Orleans.Runtime.Startup
                 }
             }
 
-            RegisterSystemTypes(serviceCollection);
+            RegisterAllSystemTypes(serviceCollection);
 
             if (usingCustomServiceProvider)
             {
@@ -45,13 +78,19 @@ namespace Orleans.Runtime.Startup
             return serviceCollection.BuildServiceProvider();
         }
 
-        private static void RegisterSystemTypes(IServiceCollection serviceCollection)
+        public static IServiceCollection RegisterAllSystemTypes(IServiceCollection serviceCollection)
         {
             // add system types
             // Note: you can replace IGrainFactory with your own implementation, but 
             // we don't recommend it, in the aspect of performance and usability
             serviceCollection.AddSingleton<GrainFactory>((_sp) => new GrainFactory());
-            serviceCollection.AddSingleton<IGrainFactory>((sp) => sp.GetService<GrainFactory>());
+            serviceCollection.AddSingleton<IGrainFactory>((sp) => (sp.GetService<GrainFactory>()));
+            return serviceCollection;
+        }
+
+        public static void RegisterSystemTypesWhichCanbeUsedByExternal(IServiceProvider internalSeviceProvider, IServiceCollection externalserviceCollection)
+        {
+            externalserviceCollection.AddSingleton<IGrainFactory>(internalSeviceProvider.GetService<GrainFactory>());
         }
 
         private static ConfigureServicesBuilder FindConfigureServicesDelegate(Type startupType)

@@ -145,11 +145,16 @@ namespace Orleans.Runtime
         /// <param name="name">Name of this silo.</param>
         /// <param name="siloType">Type of this silo.</param>
         /// <param name="config">Silo config data to be used for this silo.</param>
-        public Silo(string name, SiloType siloType, ClusterConfiguration config)
-            : this(name, siloType, config, null)
+        public Silo(string name, SiloType siloType, ClusterConfiguration config,
+            IServiceProvider internalServiceProvider = null, IServiceProvider externalServiceProvider = null, 
+            bool useCustomServiceProvider = false)
+            : this(name, siloType, config, null, internalServiceProvider
+                  ,externalServiceProvider, useCustomServiceProvider)
         {
-            
         }
+
+        private IServiceProvider internalServiceProvider;
+        private IServiceProvider externalServiceProvider;
 
         /// <summary>
         /// Creates and initializes the silo from the specified config data.
@@ -160,8 +165,13 @@ namespace Orleans.Runtime
         /// <param name="keyStore">Local data store, mostly used for testing, shared between all silos running in same process.</param>
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope",
             Justification = "Should not Dispose of messageCenter in this method because it continues to run / exist after this point.")]
-        internal Silo(string name, SiloType siloType, ClusterConfiguration config, ILocalDataStore keyStore)
+        internal Silo(string name, SiloType siloType, ClusterConfiguration config, ILocalDataStore keyStore,
+           IServiceProvider internalServiceProvider = null, IServiceProvider externalServiceProvider = null, 
+           bool useCustomServiceProvider = false)
         {
+            this.internalServiceProvider = internalServiceProvider;
+            this.externalServiceProvider = externalServiceProvider;
+            
             SystemStatus.Current = SystemStatus.Creating;
 
             CurrentSilo = this;
@@ -222,8 +232,16 @@ namespace Orleans.Runtime
             }
 
             // Configure DI using Startup type
-            bool usingCustomServiceProvider;
-            Services = StartupBuilder.ConfigureStartup(nodeConfig.StartupTypeName, out usingCustomServiceProvider);
+            bool usingCustomServiceProvider = useCustomServiceProvider;
+            // if didn't use ISiloHostBuilder pattern,ideally I want to introduce SiloHostBuilder pattern, this is just a temporary hack on how we 
+            // want to handle backwards compatible issues
+            if (this.internalServiceProvider == null)
+            {
+                this.externalServiceProvider = StartupBuilder.ConfigureStartup(nodeConfig.StartupTypeName, out usingCustomServiceProvider);
+                this.internalServiceProvider = this.externalServiceProvider;
+                
+            }
+            Services = this.internalServiceProvider;
 
             healthCheckParticipants = new List<IHealthCheckParticipant>();
             allSiloProviders = new List<IProvider>();
@@ -237,7 +255,7 @@ namespace Orleans.Runtime
 
             try
             {
-                grainFactory = Services.GetRequiredService<GrainFactory>();
+                grainFactory = this.internalServiceProvider.GetRequiredService<GrainFactory>();
             }
             catch (InvalidOperationException exc)
             {
@@ -275,7 +293,7 @@ namespace Orleans.Runtime
                 new TimerRegistry(),
                 new ReminderRegistry(),
                 new StreamProviderManager(),
-                Services);
+                this.internalServiceProvider);
 
 
             // Now the router/directory service
@@ -295,7 +313,7 @@ namespace Orleans.Runtime
 
             // to preserve backwards compatibility, only use the service provider to inject grain dependencies if the user supplied his own
             // service provider, meaning that he is explicitly opting into it.
-            var grainCreator = new GrainCreator(grainRuntime, usingCustomServiceProvider ? Services : null);
+            var grainCreator = new GrainCreator(grainRuntime, usingCustomServiceProvider ? this.externalServiceProvider : null);
 
             Action<Dispatcher> setDispatcher;
             catalog = new Catalog(Constants.CatalogId, SiloAddress, Name, LocalGrainDirectory, typeManager, scheduler, activationDirectory, config, grainCreator, out setDispatcher);
@@ -462,7 +480,7 @@ namespace Orleans.Runtime
             // Set up an execution context for this thread so that the target creation steps can use asynch values.
             RuntimeContext.InitializeMainThread();
 
-            SiloProviderRuntime.Initialize(GlobalConfig, SiloIdentity, grainFactory, Services);
+            SiloProviderRuntime.Initialize(GlobalConfig, SiloIdentity, grainFactory, this.internalServiceProvider);
             InsideRuntimeClient.Current.CurrentStreamProviderRuntime = SiloProviderRuntime.Instance;
             statisticsProviderManager = new StatisticsProviderManager("Statistics", SiloProviderRuntime.Instance);
             string statsProviderName =  statisticsProviderManager.LoadProvider(GlobalConfig.ProviderConfigurations)
@@ -493,7 +511,7 @@ namespace Orleans.Runtime
             if (logger.IsVerbose) {  logger.Verbose("System grains created successfully."); }
 
             // Initialize storage providers once we have a basic silo runtime environment operating
-            storageProviderManager = new StorageProviderManager(grainFactory, Services);
+            storageProviderManager = new StorageProviderManager(grainFactory, this.internalServiceProvider);
             scheduler.QueueTask(
                 () => storageProviderManager.LoadStorageProviders(GlobalConfig.ProviderConfigurations),
                 providerManagerSystemTarget.SchedulingContext)

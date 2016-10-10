@@ -79,35 +79,53 @@ namespace Orleans.Runtime.Host
         private EventWaitHandle startupEvent;
         private EventWaitHandle shutdownEvent;
         private bool disposed;
-
+        private IServiceProvider internalServiceProvider;
+        private IServiceProvider externalServiceProvider;
+        private bool useCustomServiceProvider;
         /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="siloName">Name of this silo.</param>
-        public SiloHost(string siloName)
+        public SiloHost(string siloName, 
+            IServiceProvider internalServiceProvider = null, IServiceProvider externalServiceProvider = null,
+            bool useCustomServiceProvider = false)
         {
             Name = siloName;
             Type = Silo.SiloType.Secondary; // Default
             IsStarted = false;
+            this.internalServiceProvider = internalServiceProvider;
+            this.externalServiceProvider = externalServiceProvider;
+            this.useCustomServiceProvider = useCustomServiceProvider;
         }
 
         /// <summary> Constructor </summary>
         /// <param name="siloName">Name of this silo.</param>
         /// <param name="config">Silo config that will be used to initialize this silo.</param>
-        public SiloHost(string siloName, ClusterConfiguration config) : this(siloName)
+        public SiloHost(string siloName, ClusterConfiguration config, 
+            IServiceProvider internalServiceProvider = null, IServiceProvider externalServiceProvider = null,
+            bool useCustomServiceProvider = false) : 
+            this(siloName)
         {
             SetSiloConfig(config);
+            this.internalServiceProvider = internalServiceProvider;
+            this.externalServiceProvider = externalServiceProvider;
+            this.useCustomServiceProvider = useCustomServiceProvider;
         }
 
         /// <summary> Constructor </summary>
         /// <param name="siloName">Name of this silo.</param>
         /// <param name="configFile">Silo config file that will be used to initialize this silo.</param>
-        public SiloHost(string siloName, FileInfo configFile)
+        public SiloHost(string siloName, FileInfo configFile, 
+            IServiceProvider internalServiceProvider = null, IServiceProvider externalServiceProvider = null,
+            bool useCustomServiceProvider = false)
             : this(siloName)
         {
             ConfigFileName = configFile.FullName;
             var config = new ClusterConfiguration();
             config.LoadFromFile(ConfigFileName);
+            this.internalServiceProvider = internalServiceProvider;
+            this.externalServiceProvider = externalServiceProvider;
+            this.useCustomServiceProvider = useCustomServiceProvider;
             SetSiloConfig(config);
         }
 
@@ -123,7 +141,7 @@ namespace Orleans.Runtime.Host
             try
             {
                 if (!ConfigLoaded) LoadOrleansConfig();
-                orleans = new Silo(Name, Type, Config);
+                orleans = new Silo(Name, Type, Config, internalServiceProvider, externalServiceProvider, useCustomServiceProvider);
                 logger.Info(ErrorCode.Runtime_Error_100288, "Successfully initialized Orleans silo '{0}' as a {1} node.", orleans.Name, orleans.Type);
             }
             catch (Exception exc)
