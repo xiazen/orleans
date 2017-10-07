@@ -6,7 +6,6 @@ using Orleans.Hosting;
 using Orleans.Runtime.Configuration;
 using LivenessProviderType = Orleans.Runtime.Configuration.GlobalConfiguration.LivenessProviderType;
 
-
 namespace Orleans.Runtime.MembershipService
 {
     /// <summary>
@@ -26,7 +25,7 @@ namespace Orleans.Runtime.MembershipService
         /// Legacy way to create membership table. Will need to move to a legacy package in the future
         /// </summary>
         /// <returns></returns>
-        internal static void ConfigureServices(GlobalConfiguration configuration, HostBuilderContext context, IServiceCollection services)
+        internal static void ConfigureServices(GlobalConfiguration configuration, IServiceCollection services)
         {
             ILegacyMembershipConfigurator configurator = null;
             switch (configuration.LivenessType)

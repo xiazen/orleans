@@ -33,9 +33,7 @@ namespace Orleans.Hosting
         {
             return builder.ConfigureServices((context, services) =>
             {
-                services.AddSingleton(configuration);
-                //if user configure membership through legacy way
-                LegacyMembershipConfigurator.ConfigureServices(configuration.Globals, context, services);
+                services.AddLegacyClusterConfigurationSupport(configuration);
             });
         }
 
