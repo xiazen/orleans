@@ -7,7 +7,7 @@ using Orleans.Concurrency;
 using Orleans.Runtime;
 using Orleans.Serialization;
 
-[assembly: GenerateSerializer(typeof(Orleans.Transactions.Abstractions.Extensions.TransactionParticipantExtensionExtensions.TransactionParticipantExtensionWrapper))]
+//[assembly: GenerateSerializer(typeof(Orleans.Transactions.Abstractions.Extensions.TransactionParticipantExtensionExtensions.TransactionParticipantExtensionWrapper))]
 
 namespace Orleans.Transactions.Abstractions.Extensions
 {
@@ -36,7 +36,9 @@ namespace Orleans.Transactions.Abstractions.Extensions
         [Immutable]
         internal sealed class TransactionParticipantExtensionWrapper : ITransactionParticipant
         {
+            [JsonProperty]
             private readonly ITransactionParticipantExtension extension;
+            [JsonProperty]
             private readonly string resourceId;
 
             public TransactionParticipantExtensionWrapper(ITransactionParticipantExtension transactionalExtension, string resourceId)

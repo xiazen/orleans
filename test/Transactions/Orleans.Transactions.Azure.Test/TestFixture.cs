@@ -6,6 +6,7 @@ using Orleans.Transactions.Tests;
 using Orleans.TestingHost.Utils;
 using TestExtensions;
 using Microsoft.Extensions.Logging;
+using Orleans.Runtime;
 using Tester;
 
 namespace Orleans.Transactions.AzureStorage.Tests
@@ -33,6 +34,7 @@ namespace Orleans.Transactions.AzureStorage.Tests
                     {
                         options.ConnectionString = TestDefaultConfiguration.DataConnectionString;
                     })
+                    .UseSiloUnobservedExceptionsHandler()
                     .UseDistributedTM();
             }
         }
