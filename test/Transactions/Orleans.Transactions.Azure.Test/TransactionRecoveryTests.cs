@@ -42,7 +42,7 @@ namespace Orleans.Transactions.AzureStorage.Tests
             return this.testRunner.TransactionWillRecoverAfterRandomSiloGracefulShutdown(transactionTestGrainClassName);
         }
 
-        [SkippableTheory(Skip = "See https://github.com/dotnet/orleans/issues/4617")]
+        [SkippableTheory()]
         [InlineData(TransactionTestConstants.SingleStateTransactionalGrain)]
         [InlineData(TransactionTestConstants.DoubleStateTransactionalGrain)]
         [InlineData(TransactionTestConstants.MaxStateTransactionalGrain)]

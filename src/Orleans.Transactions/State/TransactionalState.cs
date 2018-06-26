@@ -89,6 +89,7 @@ namespace Orleans.Transactions
 
         private CausalClock clock;
 
+        private JsonSerializerSettings serializerSettings;
         // collection tasks
         private Dictionary<DateTime, PMessages> unprocessedPreparedMessages;
         private class PMessages
@@ -120,11 +121,8 @@ namespace Orleans.Transactions
             lockWorker = new BatchWorkerFromDelegate(LockWork);
             storageWorker = new BatchWorkerFromDelegate(StorageWork);
             confirmationWorker = new BatchWorkerFromDelegate(ConfirmationWork);
-
-            if (MetaData.SerializerSettings == null)
-            {
-                MetaData.SerializerSettings = TransactionParticipantExtensionExtensions.GetJsonSerializerSettings(typeResolver, grainFactory);
-            }
+            
+            this.serializerSettings = TransactionParticipantExtensionExtensions.GetJsonSerializerSettings(typeResolver, grainFactory);
         }
 
         #region lifecycle
@@ -189,8 +187,16 @@ namespace Orleans.Transactions
             commitQueue.Clear();
 
             var loadresponse = await loadtask;
-
-            storageBatch = new StorageBatch<TState>(loadresponse);
+            try
+            {
+                storageBatch = new StorageBatch<TState>(loadresponse, this.serializerSettings);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
+         
 
             stableState = loadresponse.CommittedState;
             stableSequenceNumber = loadresponse.CommittedSequenceId;
@@ -208,9 +214,21 @@ namespace Orleans.Transactions
                 {
                     if (logger.IsEnabled(LogLevel.Debug))
                         logger.Debug($"recover two-phase-commit {pr.TransactionId}");
-
-                    var tm = (pr.TransactionManager == null) ? null :
-                        (ITransactionParticipant) JsonConvert.DeserializeObject<ITransactionParticipant>(pr.TransactionManager, MetaData.SerializerSettings);
+                    ITransactionParticipant tm = null;
+                    if (!string.IsNullOrEmpty(pr.TransactionManager))
+                    {
+                        try
+                        {
+                            tm = (ITransactionParticipant)JsonConvert.DeserializeObject<ITransactionParticipant>(pr.TransactionManager, this.serializerSettings);
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine(e);
+                            throw;
+                        }
+                    }
+                   // var tm = (pr.TransactionManager == null) ? null :
+                       // (ITransactionParticipant) JsonConvert.DeserializeObject<ITransactionParticipant>(pr.TransactionManager, MetaData.SerializerSettings);
 
                     commitQueue.Add(new TransactionRecord<TState>()
                     {

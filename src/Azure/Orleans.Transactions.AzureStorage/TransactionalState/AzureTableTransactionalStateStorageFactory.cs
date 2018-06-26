@@ -34,6 +34,8 @@ namespace Orleans.Transactions.AzureStorage
             this.options = options;
             this.clusterOptions = clusterOptions.Value;
             this.jsonSettings = OrleansJsonSerializer.GetDefaultSerializerSettings(typeResolver, grainFactory);
+            jsonSettings.TypeNameHandling = TypeNameHandling.Auto;
+            jsonSettings.PreserveReferencesHandling = PreserveReferencesHandling.None;
             this.loggerFactory = loggerFactory;
         }
 
