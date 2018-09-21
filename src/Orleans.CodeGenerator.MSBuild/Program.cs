@@ -57,6 +57,8 @@ namespace Microsoft.Orleans.CodeGenerator.MSBuild
                 if (!File.Exists(argsFile)) throw new ArgumentException($"Arguments file \"{argsFile}\" does not exist.");
 
                 var fileArgs = File.ReadAllLines(argsFile);
+                char[] charSeparators = new char[] { ',' };
+
                 foreach (var arg in fileArgs)
                 {
                     var parts = arg.Split(new[] {':'}, 2);
@@ -100,7 +102,7 @@ namespace Microsoft.Orleans.CodeGenerator.MSBuild
                             cmd.Reference.Add(value);
                             break;
                         case nameof(cmd.DefineConstants):
-                            cmd.DefineConstants.AddRange(value.Split(',', StringSplitOptions.RemoveEmptyEntries));
+                            cmd.DefineConstants.AddRange(value.Split(charSeparators, StringSplitOptions.RemoveEmptyEntries));
                             break;
                         case nameof(cmd.CodeGenOutputFile):
                             cmd.CodeGenOutputFile = value;

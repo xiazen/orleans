@@ -91,7 +91,7 @@ namespace CodeGenerator.Tests
                 var assemblyPath = Path.GetDirectoryName(typeof(object).Assembly.Location);
                 return new List<MetadataReference>
                 {
-                    MetadataReference.CreateFromFile(Path.Combine(assemblyPath, "netstandard.dll")),
+                    MetadataReference.CreateFromFile(Path.Combine(assemblyPath, "net.dll")),
                     MetadataReference.CreateFromFile(Path.Combine(assemblyPath, "mscorlib.dll")),
                     MetadataReference.CreateFromFile(Path.Combine(assemblyPath, "System.dll")),
                     MetadataReference.CreateFromFile(Path.Combine(assemblyPath, "System.Core.dll")),
