@@ -17,10 +17,17 @@ namespace Orleans.CodeGeneration
             this.Assembly = type.GetTypeInfo().Assembly;
         }
 
+        /// <summary>Initializes a new instance of <see cref="KnownAssemblyAttribute"/>.</summary>
+        /// <param name="assemblyName">The target assembly name.</param>
+        public KnownAssemblyAttribute(string assemblyName)
+        {
+            this.Assembly = Assembly.Load(new AssemblyName(assemblyName));
+        }
+
         /// <summary>
         /// Gets or sets the assembly to include in code generation.
         /// </summary>
-        public Assembly Assembly { get; }
+        public Assembly Assembly { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether or not to assume that all types in the specified assembly are

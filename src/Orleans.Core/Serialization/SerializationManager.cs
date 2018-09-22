@@ -139,17 +139,12 @@ namespace Orleans.Serialization
 
             foreach (var serializer in serializerFeature.SerializerDelegates)
             {
-                this.Register(
-                    serializer.Target,
-                    serializer.Delegates.DeepCopy,
-                    serializer.Delegates.Serialize,
-                    serializer.Delegates.Deserialize,
-                    serializer.OverrideExisting);
+                this.Register(serializer.Target, serializer.Delegates.DeepCopy, serializer.Delegates.Serialize, serializer.Delegates.Deserialize);
             }
 
             foreach (var serializer in serializerFeature.SerializerTypes)
             {
-                this.Register(serializer.Target, serializer.Serializer, serializer.OverrideExisting);
+                this.Register(serializer.Target, serializer.Serializer);
             }
 
             foreach (var knownType in serializerFeature.KnownTypes)
@@ -337,8 +332,7 @@ namespace Orleans.Serialization
         /// </summary>
         /// <param name="type">The type serialized by the provided serializer type.</param>
         /// <param name="serializerType">The type containing serialization methods for <paramref name="type"/>.</param>
-        /// <param name="overrideExisting">Whether or not to override existing registrations for the provided <paramref name="type"/>.</param>
-        private void Register(Type type, Type serializerType, bool overrideExisting = true)
+        private void Register(Type type, Type serializerType)
         {
             GetSerializationMethods(serializerType, out var copier, out var serializer, out var deserializer);
 
@@ -390,7 +384,7 @@ namespace Orleans.Serialization
                         copier != null ? DeepCopyGeneric : default(DeepCopier),
                         serializer != null ? SerializeGeneric : default(Serializer),
                         deserializer != null ? DeserializeGeneric : default(Deserializer),
-                        overrideExisting);
+                        true);
                 }
                 else
                 {
@@ -400,7 +394,7 @@ namespace Orleans.Serialization
                         CreateDelegate<DeepCopier>(copier, serializerInstance),
                         CreateDelegate<Serializer>(serializer, serializerInstance),
                         CreateDelegate<Deserializer>(deserializer, serializerInstance),
-                        overrideExisting);
+                        true);
                 }
             }
             catch (ArgumentException)
