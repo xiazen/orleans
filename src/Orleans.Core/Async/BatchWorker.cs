@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Orleans
@@ -119,7 +120,7 @@ namespace Orleans
         {
             TaskCompletionSource<Task> signal = null;
             Task taskToSignal = null;
-
+            Thread.Yield();
             lock (lockable)
             {
                 if (moreWork)
