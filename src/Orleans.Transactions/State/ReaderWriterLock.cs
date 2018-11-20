@@ -26,7 +26,6 @@ namespace Orleans.Transactions.State
 
         // cache the last known minimum so we don't have to recompute it as much
         private DateTime cachedMin = DateTime.MaxValue;
-        private Guid cachedMinId;
 
         // group of non-conflicting transactions collectively acquiring/releasing the lock
         private class LockGroup : Dictionary<Guid, TransactionRecord<TState>>
