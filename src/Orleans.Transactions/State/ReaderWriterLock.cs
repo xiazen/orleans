@@ -61,6 +61,7 @@ namespace Orleans.Transactions.State
             // search active transactions
             if (Find(transactionId, isRead, out var group, out var record))
             {
+                this.logger.LogWarning("ReadWriteLock.EnterLock, shouldn't hit here. Since there's only one tx going on per grain");
                 // check if we lost some reads or writes already
                 if (counter.Reads > record.NumberReads || counter.Writes > record.NumberWrites)
                 {
@@ -367,6 +368,7 @@ namespace Orleans.Transactions.State
             }
             else
             {
+                this.logger.LogWarning("ReadWriteLock.Find, shouldn't hit here. Since there's only one tx going on per grain");
                 group = null;
                 var pos = currentGroup;
 
