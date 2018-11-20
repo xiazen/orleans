@@ -15,7 +15,6 @@ namespace Orleans.Transactions.State
     {
         private readonly TransactionalStateOptions options;
         private readonly TransactionQueue<TState> queue;
-        private BatchWorker lockWorker;
         private BatchWorker storageWorker;
         private readonly ILogger logger;
 
@@ -47,7 +46,6 @@ namespace Orleans.Transactions.State
             this.queue = queue;
             this.storageWorker = storageWorker;
             this.logger = logger;
-            this.lockWorker = new BatchWorkerFromDelegate(LockWork);
         }
 
         public async Task<TResult> EnterLock<TResult>(Guid transactionId, DateTime priority,
@@ -156,11 +154,12 @@ namespace Orleans.Transactions.State
 
             if (rollbacksOccurred)
             {
-                lockWorker.Notify();
+                LockWork().Ignore();
             }
             else if (group.Deadline.HasValue)
             {
-                lockWorker.Notify(group.Deadline.Value);
+                if(DateTime.UtcNow < group.Deadline)
+                    LockWork().Ignore();
             }
 
             await Task.WhenAll(cleanup);
@@ -187,7 +186,7 @@ namespace Orleans.Transactions.State
 
         public void Notify()
         {
-            this.lockWorker.Notify();
+            LockWork().Ignore();
         }
 
         public bool TryGetRecord(Guid transactionId, out TransactionRecord<TState> record)
@@ -274,8 +273,7 @@ namespace Orleans.Transactions.State
                                 await this.queue.EnqueueCommit(r);
                             }
                         }
-
-                        lockWorker.Notify();
+                        
                         storageWorker.Notify();
                     }
 
@@ -285,16 +283,12 @@ namespace Orleans.Transactions.State
                         var txlist = string.Join(",", currentGroup.Keys.Select(g => g.ToString()));
                         logger.Warn(555, $"break-lock timeout for {currentGroup.Count} transactions {txlist}");
                         await AbortExecutingTransactions();
-                        lockWorker.Notify();
                     }
 
                     else if (currentGroup.Deadline.HasValue)
                     {
                         if (logger.IsEnabled(LogLevel.Trace))
                             logger.Trace("recheck lock expiration at {Deadline}", currentGroup.Deadline.Value.ToString("o"));
-
-                        // check again when the group expires
-                        lockWorker.Notify(currentGroup.Deadline.Value);
                     }
                 }
 
@@ -350,8 +344,7 @@ namespace Orleans.Transactions.State
                                 var ignore = t.Exception;
                             }
                         }
-
-                        lockWorker.Notify();
+                        
                     }
                 }
             }
