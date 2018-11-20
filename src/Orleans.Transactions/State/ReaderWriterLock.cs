@@ -33,7 +33,6 @@ namespace Orleans.Transactions.State
         {
             public int FillCount;
             public List<Task> Tasks; // the tasks for executing the waiting operations
-            public LockGroup Next; // queued-up transactions waiting to acquire lock
             public DateTime? Deadline;
         }
 
@@ -61,6 +60,7 @@ namespace Orleans.Transactions.State
             // search active transactions
             if (Find(transactionId, isRead, out var group, out var record))
             {
+                this.logger.LogWarning("ReadWriteLock.EnterLock, shouldn't have active transaction here, since one tx per grain");
                 // check if we lost some reads or writes already
                 if (counter.Reads > record.NumberReads || counter.Writes > record.NumberWrites)
                 {
@@ -129,6 +129,7 @@ namespace Orleans.Transactions.State
 
             if (group != currentGroup)
             {
+                this.logger.LogWarning("ReadWriteLock.EnterLock, shouldn't be hitting here, group should always be equal to currentGroup");
                 // task will be executed once its group acquires the lock
 
                 if (group.Tasks == null)
@@ -216,24 +217,7 @@ namespace Orleans.Transactions.State
 
         public void AbortQueuedTransactions()
         {
-            var pos = currentGroup?.Next;
-            while (pos != null)
-            {
-                if (pos.Tasks != null)
-                {
-                    foreach (var t in pos.Tasks)
-                    {
-                        // running the task will abort the transaction because it is not in currentGroup
-                        t.RunSynchronously();
-                        // look at exception to avoid UnobservedException
-                        var ignore = t.Exception;
-                    }
-                }
-                pos.Clear();
-                pos = pos.Next;
-            }
-            if (currentGroup != null)
-                currentGroup.Next = null;
+           this.logger.LogWarning("ReadWriteLock.AbortQueuedTransactions, Shouldn't have queued transactions, something is wrong...");
         }
 
         public async Task Rollback(Guid guid, bool notify)
@@ -269,6 +253,7 @@ namespace Orleans.Transactions.State
                         }
                         else if (multiple != null)
                         {
+                            this.logger.LogWarning("ReadWriteLock.LockWork, shouldn't be hitting here, since only one tx should be in group.");
                             foreach (var r in multiple)
                             {
                                 await this.queue.EnqueueCommit(r);
@@ -300,59 +285,8 @@ namespace Orleans.Transactions.State
 
                 else
                 {
-                    // the lock is empty, a new group can enter
-                    currentGroup = currentGroup.Next;
-
-                    if (currentGroup != null)
-                    {
-                        currentGroup.Deadline = DateTime.UtcNow + this.options.LockTimeout;
-
-                        // discard expired waiters that have no chance to succeed
-                        // because they have been waiting for the lock for a longer timespan than the 
-                        // total transaction timeout
-                        var now = DateTime.UtcNow;
-                        List<Guid> expiredWaiters = null;
-                        foreach (var kvp in currentGroup)
-                        {
-                            if (now > kvp.Value.Deadline)
-                            {
-                                if (expiredWaiters == null)
-                                    expiredWaiters = new List<Guid>();
-                                expiredWaiters.Add(kvp.Key);
-
-                                if (logger.IsEnabled(LogLevel.Trace))
-                                    logger.Trace($"expire-lock-waiter {kvp.Key}");
-                            }
-                        }
-
-                        if (expiredWaiters != null)
-                        {
-                            foreach (var guid in expiredWaiters)
-                            {
-                                currentGroup.Remove(guid);
-                            }
-                        }
-
-                        if (logger.IsEnabled(LogLevel.Trace))
-                        {
-                            logger.Trace($"lock groupsize={currentGroup.Count} deadline={currentGroup.Deadline:o}");
-                            foreach (var kvp in currentGroup)
-                                logger.Trace($"enter-lock {kvp.Key}");
-                        }
-
-                        // execute all the read and update tasks
-                        if (currentGroup.Tasks != null)
-                        {
-                            foreach (var t in currentGroup.Tasks)
-                            {
-                                t.RunSynchronously();
-                                // look at exception to avoid UnobservedException
-                                var ignore = t.Exception;
-                            }
-                        }
-
-                        lockWorker.Notify();
-                    }
+                    // the lock is empty, set it back to null
+                    currentGroup = null;
                 }
             }
         }
@@ -367,38 +301,17 @@ namespace Orleans.Transactions.State
             }
             else
             {
+                this.logger.LogWarning("ReadWriteLock.Find, shouldn't hit here. Since there's only one tx going on per grain");
                 group = null;
                 var pos = currentGroup;
 
-                while (true)
+                if (pos.TryGetValue(guid, out record))
                 {
-                    if (pos.TryGetValue(guid, out record))
-                    {
-                        group = pos;
-                        return true;
-                    }
-
-                    // if we have not found a place to insert this op yet, and there is room, and no conflicts, use this one
-                    if (group == null
-                        && pos.FillCount < maxGroupSize
-                        && !HasConflict(isRead, DateTime.MaxValue, guid, pos, out var resolvable))
-                    {
-                        group = pos;
-                    }
-
-                    if (pos.Next == null) // we did not find this tx.
-                    {
-                        // add a new empty group to insert this tx, if we have not found one yet
-                        if (group == null)
-                        {
-                            group = pos.Next = new LockGroup();
-                        }
-
-                        return false;
-                    }
-
-                    pos = pos.Next;
+                    group = pos;
+                    return true;
                 }
+                return false;
+
             }
         }
 
@@ -471,60 +384,8 @@ namespace Orleans.Transactions.State
             }
             else
             {
-                // find the current minimum, if we don't have a valid cache of it
-                if (cachedMin == DateTime.MaxValue
-                    || !currentGroup.TryGetValue(cachedMinId, out var record)
-                    || record.Role != CommitRole.NotYetDetermined
-                    || record.Timestamp != cachedMin)
-                {
-                    cachedMin = DateTime.MaxValue;
-                    foreach (var kvp in currentGroup)
-                    {
-                        if (kvp.Value.Role == CommitRole.NotYetDetermined) // has not received commit from TA
-                        {
-                            if (cachedMin > kvp.Value.Timestamp)
-                            {
-                                cachedMin = kvp.Value.Timestamp;
-                                cachedMinId = kvp.Key;
-                            }
-                        }
-                    }
-                }
-
-                // find released entries
-                foreach (var kvp in currentGroup)
-                {
-                    if (kvp.Value.Role != CommitRole.NotYetDetermined) // ready to commit
-                    {
-                        if (kvp.Value.Timestamp < cachedMin)
-                        {
-                            if (multiple == null)
-                            {
-                                multiple = new List<TransactionRecord<TState>>();
-                            }
-                            multiple.Add(kvp.Value);
-                        }
-                    }
-                }
-
-                if (multiple == null)
-                {
-                    return false;
-                }
-                else
-                {
-                    multiple.Sort(Comparer);
-
-                    for (int i = 0; i < multiple.Count; i++)
-                    {
-                        currentGroup.Remove(multiple[i].TransactionId);
-
-                        if (logger.IsEnabled(LogLevel.Debug))
-                            logger.Debug($"exit-lock ({i}/{multiple.Count}) {multiple[i].TransactionId} {multiple[i].Timestamp:o}");
-                    }
-
-                    return true;
-                }
+                this.logger.LogWarning("ReadWriteLock.LockExits, One group should only have one tx, shouldn't be hitting here");
+                return false;
             }
         }
 
