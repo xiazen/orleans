@@ -154,12 +154,12 @@ namespace Orleans.Transactions.State
 
             if (rollbacksOccurred)
             {
-                LockWork().Ignore();
+                await LockWork();
             }
             else if (group.Deadline.HasValue)
             {
                 if(DateTime.UtcNow < group.Deadline)
-                    LockWork().Ignore();
+                   await LockWork();
             }
 
             await Task.WhenAll(cleanup);
@@ -186,7 +186,7 @@ namespace Orleans.Transactions.State
 
         public void Notify()
         {
-            LockWork().Ignore();
+            LockWork().Wait();
         }
 
         public bool TryGetRecord(Guid transactionId, out TransactionRecord<TState> record)
