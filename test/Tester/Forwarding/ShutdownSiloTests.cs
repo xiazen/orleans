@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -44,17 +45,24 @@ namespace Tester.Forwarding
         {
             var grain = await GetLongRunningTaskGrainOnSecondary<bool>();
 
+            var tasks = new List<Task>();
+            //requests should be transfered to other silos after secondary shutdown
+            for (int i = 0; i < 10; i++)
+            {
+                tasks.Add(grain.LongRunningTask(true, TimeSpan.FromMilliseconds(5)));
+            }
+            /*
             // First call should be done on Secondary
             var promisesBeforeShutdown = grain.LongRunningTask(true, TimeSpan.FromSeconds(5));
             // Second call should be transfered to another silo
             var promisesAfterShutdown = grain.LongRunningTask(true, TimeSpan.FromSeconds(5));
+            */
 
             // Shutdown the silo where the grain is
             await Task.Delay(500);
             await HostedCluster.StopSiloAsync(HostedCluster.SecondarySilos.First());
 
-            await promisesBeforeShutdown;
-            await promisesAfterShutdown;
+            await Task.WhenAll(tasks);
         }
 
         [Fact, TestCategory("GracefulShutdown"), TestCategory("Functional")]
