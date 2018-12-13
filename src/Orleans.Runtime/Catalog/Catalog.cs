@@ -975,12 +975,19 @@ namespace Orleans.Runtime
                     logger.Warn(ErrorCode.Catalog_WaitForAllTimersToFinish_Exception, String.Format("WaitForAllTimersToFinish {0} failed.", list.Count), exc);
                 }
 
+                
                 // step 2 - CallGrainDeactivate
                 var tasks2 = new List<Tuple<Task, ActivationData>>();
                 foreach (var activation in list)
                 {
                     var activationData = activation; // Capture loop variable
-                    var task = scheduler.RunOrQueueTask(() => CallGrainDeactivateAndCleanupStreams(activationData, cts.Token), activationData.SchedulingContext);
+                    var task = scheduler.RunOrQueueTask(async () =>
+                    {
+                        var re = await CallGrainDeactivateAndCleanupStreams(activationData, cts.Token);
+                        RerouteAllQueuedMessages(activation, null, "CallGrainDeactivateAndCleanupStreams");
+                        //  this.logger.LogInformation($"wait for {this.Dispatcher.processRequestsToInvalidActivation.Count} messages to be queued");
+                        // await Task.WhenAll(this.Dispatcher.processRequestsToInvalidActivation);
+                    }, activationData.SchedulingContext);
                     tasks2.Add(new Tuple<Task, ActivationData>(task, activationData));
                 }
                 var asyncQueue = new AsyncBatchedContinuationQueue<ActivationData>();
@@ -1046,7 +1053,7 @@ namespace Orleans.Runtime
 
                         directory.InvalidateCacheEntry(activationData.Address);
 
-                        RerouteAllQueuedMessages(activationData, null, "Finished Destroy Activation");
+
                     }
                     catch (Exception exc)
                     {

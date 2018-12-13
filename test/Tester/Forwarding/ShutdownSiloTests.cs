@@ -47,9 +47,9 @@ namespace Tester.Forwarding
 
             var tasks = new List<Task>();
             //requests should be transfered to other silos after secondary shutdown
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < 100; i++)
             {
-                tasks.Add(grain.LongRunningTask(true, TimeSpan.FromMilliseconds(5)));
+                tasks.Add(grain.LongRunningTask(true, TimeSpan.FromMilliseconds(50)));
             }
             /*
             // First call should be done on Secondary

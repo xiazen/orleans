@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -503,7 +504,7 @@ namespace Orleans.Runtime
                 () => TryForwardRequest(message, oldAddress, forwardingAddress, failedOperation, exc)),
                 catalog.SchedulingContext);
         }
-
+        internal ConcurrentBag<Task<bool>> processRequestsToInvalidActivation = new ConcurrentBag<Task<bool>>();
         internal void ProcessRequestsToInvalidActivation(
             List<Message> messages,
             ActivationAddress oldAddress,
@@ -524,24 +525,36 @@ namespace Orleans.Runtime
                     $"Forwarding {messages.Count} requests destined for address {oldAddress} to address {forwardingAddress} after {failedOperation}.");
             }
 
+            var tsc = new TaskCompletionSource<bool>();
             // IMPORTANT: do not do anything on activation context anymore, since this activation is invalid already.
             scheduler.QueueWorkItem(new ClosureWorkItem(
                 () =>
                 {
-                    foreach (var message in messages)
+                    try
                     {
-                        if (rejectMessages)
+                        foreach (var message in messages)
                         {
-                            RejectMessage(message, Message.RejectionTypes.Transient, exc, failedOperation);
-                        }
-                        else
-                        {
-                            TryForwardRequest(message, oldAddress, forwardingAddress, failedOperation, exc);
-                        }
+                            if (rejectMessages)
+                            {
+                                RejectMessage(message, Message.RejectionTypes.Transient, exc, failedOperation);
+                            }
+                            else
+                            {
+                                TryForwardRequest(message, oldAddress, forwardingAddress, failedOperation, exc);
+                            }
 
+                        }
+                        tsc.SetResult(true);
                     }
+                    catch (Exception e)
+                    {
+                        tsc.SetException(e);
+                        throw;
+                    }
+
                 }
                 ), catalog.SchedulingContext);
+            processRequestsToInvalidActivation.Add(tsc.Task);
         }
 
         internal void TryForwardRequest(Message message, ActivationAddress oldAddress, ActivationAddress forwardingAddress, string failedOperation, Exception exc = null)
@@ -549,18 +562,8 @@ namespace Orleans.Runtime
             bool forwardingSucceded = true;
             try
             {
-                if (logger.IsEnabled(LogLevel.Information))
-                {
-                    logger.LogInformation(
-                        (int)ErrorCode.Messaging_Dispatcher_TryForward,
-                        "Trying to forward after {FailedOperation}, ForwardCount = {ForwardCount}. OldAddress = {OldAddress}, ForwardingAddress = {ForwardingAddress}, Message {Message}, Exception: {Exception}.",
-                        failedOperation,
-                        message.ForwardCount,
-                        oldAddress,
-                        forwardingAddress,
-                        message,
-                        exc);
-                }
+
+                logger.Info(ErrorCode.Messaging_Dispatcher_TryForward, $"Trying to forward after {failedOperation}, ForwardCount = {message.ForwardCount}. Message {message}.");
 
                 // if this message is from a different cluster and hit a non-existing activation
                 // in this cluster (which can happen due to stale cache or directory states)

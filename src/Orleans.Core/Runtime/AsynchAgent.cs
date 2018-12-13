@@ -64,6 +64,7 @@ namespace Orleans.Runtime
         {
         }
 
+        internal int GetQueuedTaskCount() => this.executor.GetItemCountInQueue();
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes")]
         private void CurrentDomain_DomainUnload(object sender, EventArgs e)
         {

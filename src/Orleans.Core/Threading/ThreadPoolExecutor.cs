@@ -52,6 +52,11 @@ namespace Orleans.Threading
             }
         }
 
+        internal int GetItemCountInQueue()
+        {
+            return workQueue.workItems.Count;
+        }
+
         public void QueueWorkItem(WaitCallback callback, object state = null)
         {
             if (callback == null) throw new ArgumentNullException(nameof(callback));

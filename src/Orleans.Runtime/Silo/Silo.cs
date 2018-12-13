@@ -788,15 +788,13 @@ namespace Orleans.Runtime
 
             if (reminderService != null)
             {
-                await this.scheduler
-                    .QueueTask(reminderService.Stop, this.reminderServiceContext)
+                await this.scheduler.QueueTask(reminderService.Stop, this.reminderServiceContext)
                     .WithCancellation(ct, "Stopping ReminderService failed because the task was cancelled");
             }
 
             foreach (var grainService in grainServices)
             {
-                await this.scheduler
-                    .QueueTask(grainService.Stop, grainService.SchedulingContext)
+                await this.scheduler.QueueTask(grainService.Stop, grainService.SchedulingContext)
                     .WithCancellation(ct, "Stopping GrainService failed because the task was cancelled");
 
                 if (this.logger.IsEnabled(LogLevel.Debug))

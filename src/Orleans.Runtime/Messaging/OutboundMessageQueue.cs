@@ -136,7 +136,11 @@ namespace Orleans.Runtime.Messaging
             foreach (var sender in senders)
             {
                 if (sender.IsValueCreated)
-                    sender.Value.Stop();                
+                {
+                    this.logger.LogInformation($"application siloMessageSender still have {sender.Value.GetQueuedTaskCount()} in this queue");
+                    sender.Value.Stop();
+                }
+                             
             }
             systemSender.Stop();
             pingSender.Stop();
