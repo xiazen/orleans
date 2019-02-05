@@ -88,7 +88,7 @@ namespace Orleans.Runtime.GrainDirectory
                     SiloAddress captureSilo = silo;
                     Dictionary<GrainId, IGrainInfo> captureChunk = chunk;
                     bool captureIsFullCopy = isFullCopy;
-                    if (logger.IsEnabled(LogLevel.Debug)) logger.Debug("Sending handed off partition to " + captureSilo);
+                    logger.LogInformation("Sending handed off partition to " + captureSilo);
 
                     Task pendingRequest;
                     if (lastPromise.TryGetValue(captureSilo, out pendingRequest))

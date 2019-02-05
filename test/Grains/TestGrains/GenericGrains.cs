@@ -4,11 +4,13 @@ using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Orleans;
 using Orleans.Concurrency;
 using Orleans.Providers;
 using Orleans.Runtime;
 using UnitTests.GrainInterfaces;
+using System.Threading;
 
 namespace UnitTests.Grains
 {
@@ -576,6 +578,93 @@ namespace UnitTests.Grains
         public override Task OnDeactivateAsync()
         {
             this.GetLogger().Verbose("***Deactivating*** {0}", this.GetPrimaryKey());
+            return Task.CompletedTask;
+        }
+    }
+
+    public static class Extensions
+    {
+        public static async Task WithTimeout(this Task taskToComplete, TimeSpan timeout, string exceptionMessage = null)
+        {
+            if (taskToComplete.IsCompleted)
+            {
+                await taskToComplete;
+                return;
+            }
+
+            var timeoutCancellationTokenSource = new CancellationTokenSource();
+            var completedTask = await Task.WhenAny(taskToComplete, Task.Delay(timeout, timeoutCancellationTokenSource.Token));
+
+            // We got done before the timeout, or were able to complete before this code ran, return the result
+            if (taskToComplete == completedTask)
+            {
+                timeoutCancellationTokenSource.Cancel();
+                // Await this so as to propagate the exception correctly
+                await taskToComplete;
+                return;
+            }
+
+            // We did not complete before the timeout, we fire and forget to ensure we observe any exceptions that may occur
+            taskToComplete.Ignore();
+            var errorMessage = exceptionMessage ?? $"WithTimeout has timed out after {timeout}";
+            throw new TimeoutException(errorMessage);
+        }
+    }
+
+    public class GrainWithRecurTask : Grain, IGrainWithRecurTask
+    {
+        private IGrainFactory grainFactory;
+        private ISimplePingGrain target;
+        private ILogger logger;
+        public GrainWithRecurTask(IGrainFactory grainFactory, ILogger<GrainWithRecurTask> logger)
+        {
+            this.logger = logger;
+            this.grainFactory = grainFactory;
+        }
+
+        private async Task PingTarget(object ignore)
+        {
+            try
+            {
+                await this.target.Ping().WithTimeout(TimeSpan.FromSeconds(2));
+                this.logger.LogInformation($"xPinged target {this.target.GetGrainIdentity()}");
+            }
+            catch (Exception e)
+            {
+                this.logger.LogWarning($"xPing target {this.target.GetGrainIdentity()} encourtered exception {e}");
+            }
+
+        }
+
+        public Task<string> GetRuntimeInstanceId()
+        {
+            return Task.FromResult(RuntimeIdentity);
+        }
+
+        public Task SetPingTarget(Guid grainId)
+        {
+            target = this.grainFactory.GetGrain<ISimplePingGrain>(grainId);
+            this.RegisterTimer(PingTarget, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(300));
+            return Task.CompletedTask;
+        }
+    }
+
+    public class SimplePingGrain : Grain, ISimplePingGrain
+    {
+        private ILogger logger;
+        public SimplePingGrain(ILogger<SimplePingGrain> logger)
+        {
+            this.logger = logger;
+        }
+
+        public Task<string> GetRuntimeInstanceId()
+        {
+            return Task.FromResult(RuntimeIdentity);
+        }
+
+        public Task Ping()
+        {
+            this.logger.LogInformation($"{this.GetGrainIdentity()} got xpinged");
             return Task.CompletedTask;
         }
     }

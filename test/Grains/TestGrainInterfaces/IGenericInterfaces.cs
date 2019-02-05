@@ -210,6 +210,21 @@ namespace UnitTests.GrainInterfaces
         Task<T> GetLastValue();
     }
 
+    public interface IGrainReportInstanceId: IGrainWithGuidKey
+    {
+        Task<string> GetRuntimeInstanceId();
+    }
+
+    public interface IGrainWithRecurTask : IGrainReportInstanceId
+    {
+        Task SetPingTarget(Guid grainId);
+    }
+
+    public interface ISimplePingGrain : IGrainReportInstanceId
+    {
+        Task Ping();
+    }
+
     public interface IGenericGrainWithConstraints<A, B, C> : IGrainWithStringKey
         where A : ICollection<B>, new() where B : struct where C : class
     {

@@ -11,12 +11,14 @@ using Orleans.TestingHost.Utils;
 using Orleans.Hosting;
 using Orleans.Configuration;
 using System.Diagnostics;
+using Microsoft.Extensions.Logging;
+using Orleans;
 
 namespace Tester.Forwarding
 {
     public class ShutdownSiloTests : TestClusterPerTest
     {
-        public const int NumberOfSilos = 2;
+        public const int NumberOfSilos = 20;
 
         public static readonly TimeSpan DeactivationTimeout = TimeSpan.FromSeconds(10);
         internal class SiloBuilderConfigurator : ISiloBuilderConfigurator
@@ -26,7 +28,7 @@ namespace Tester.Forwarding
                 hostBuilder.Configure<GrainCollectionOptions>(options =>
                 {
                     options.DeactivationTimeout = DeactivationTimeout;
-                }).UseAzureStorageClustering(options => options.ConnectionString = TestDefaultConfiguration.DataConnectionString);
+                }); //.UseAzureStorageClustering(options => options.ConnectionString = TestDefaultConfiguration.DataConnectionString);
             }
         }
 
@@ -50,6 +52,28 @@ namespace Tester.Forwarding
         public ShutdownSiloTests()
         {
             this.EnsurePreconditionsMet();
+        }
+
+        [SkippableFact, TestCategory("Forward"), TestCategory("Functional")]
+        public async Task SiloGracefulShutdown_ForwardPendingRequest_GrainToGrainRequest()
+        {
+            const int shutdownSiloIndex = 1;
+            const int aliveSiloIndex = 0;
+
+            var tasks = new List<Task>();
+           // for (int i = 0; i < 100; i++)
+           // {
+                var grainWithTimer = await GetGrainOnSilo<IGrainWithRecurTask>(aliveSiloIndex);
+                var pingGrain = await GetGrainOnSilo<ISimplePingGrain>(shutdownSiloIndex);
+            this.logger.LogInformation($"GrainId {pingGrain}");
+                tasks.Add(grainWithTimer.SetPingTarget(pingGrain.GetPrimaryKey()));
+            //}
+
+            await Task.WhenAll(tasks);
+            // Shutdown the silo where the grain is
+            await Task.Delay(500);
+            await HostedCluster.StopSiloAsync(HostedCluster.SecondarySilos.First());
+            await Task.Delay(TimeSpan.FromSeconds(10));
         }
 
         [SkippableFact, TestCategory("Forward"), TestCategory("Functional")]
@@ -121,6 +145,20 @@ namespace Tester.Forwarding
                 var grain = GrainFactory.GetGrain<ILongRunningTaskGrain<T>>(Guid.NewGuid());
                 var instanceId = await grain.GetRuntimeInstanceId();
                 if (instanceId.Contains(HostedCluster.SecondarySilos[0].SiloAddress.Endpoint.ToString()))
+                {
+                    return grain;
+                }
+            }
+        }
+
+        private async Task<TGrainInterface> GetGrainOnSilo<TGrainInterface>(int siloIndex)
+            where TGrainInterface: IGrainReportInstanceId
+        {
+            while (true)
+            {
+                var grain = GrainFactory.GetGrain<TGrainInterface>(Guid.NewGuid());
+                var instanceId = await grain.GetRuntimeInstanceId();
+                if (instanceId.Contains(HostedCluster.Silos[siloIndex].SiloAddress.Endpoint.ToString()))
                 {
                     return grain;
                 }

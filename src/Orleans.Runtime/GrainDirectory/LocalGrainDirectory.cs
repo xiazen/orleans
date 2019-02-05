@@ -336,7 +336,7 @@ namespace Orleans.Runtime.GrainDirectory
 
                 AdjustLocalDirectory(silo);
                 AdjustLocalCache(silo);
-
+                this.log.LogInformation($"My local directory partition now owns {DirectoryPartition} after silo {silo} removed");
                 if (log.IsEnabled(LogLevel.Debug)) log.Debug("Silo {0} removed silo {1}", MyAddress, silo);
             }
         }
@@ -347,16 +347,30 @@ namespace Orleans.Runtime.GrainDirectory
         /// <param name="removedSilo"></param>
         protected void AdjustLocalDirectory(SiloAddress removedSilo)
         {
-            var activationsToRemove = (from pair in DirectoryPartition.GetItems()
+            var allActivations = DirectoryPartition.GetItems();
+            var activationsToRemove = (from pair in allActivations
                                        from pair2 in pair.Value.Instances.Where(pair3 => pair3.Value.SiloAddress.Equals(removedSilo))
                                        select new Tuple<GrainId, ActivationId>(pair.Key, pair2.Key)).ToList();
+
             // drop all records of activations located on the removed silo
             foreach (var activation in activationsToRemove)
             {
                 DirectoryPartition.RemoveActivation(activation.Item1, activation.Item2);
             }
+          /*  this.log.LogInformation($"Gonna clean some invalid grainId entry");
+            //clear invalid grain entry which don't belong to local grain directory partition due to cluster size change
+            foreach (var grainId in DirectoryPartition.GetItems())
+            {
+                var targetGrainDirectoryPartition = this.CalculateGrainDirectoryPartition(grainId.Key);
+                if (!targetGrainDirectoryPartition.Equals(siloStatusOracle.SiloAddress))
+                {
+                    DirectoryPartition.RemoveGrain(grainId.Key);
+                    this.log.LogInformation($"Remove grain {grainId.Key} from local grain directory partition due to cluster size change.");
+                }
+                
+            }*/
+            
         }
-
         /// Adjust local cache following the removal of a silo by dropping:
         /// 1) entries that point to activations located on the removed silo 
         /// 2) entries for grains that are now owned by this silo (me)
@@ -374,6 +388,7 @@ namespace Orleans.Runtime.GrainDirectory
                 if (MyAddress.Equals(CalculateGrainDirectoryPartition(tuple.Item1)))
                 {
                     DirectoryCache.Remove(tuple.Item1);
+                    
                 }
 
                 // 1) remove entries that point to activations located on the removed silo
@@ -427,6 +442,8 @@ namespace Orleans.Runtime.GrainDirectory
 
         public void SiloStatusChangeNotification(SiloAddress updatedSilo, SiloStatus status)
         {
+            this.log.Info($"Received Silo {updatedSilo} status change to {status}"
+                + $"My local directory partition currently own {this.DirectoryPartition}");
             // This silo's status has changed
             if (!Equals(updatedSilo, MyAddress)) // Status change for some other silo
             {
@@ -440,6 +457,7 @@ namespace Orleans.Runtime.GrainDirectory
                     // QueueAction up the "Remove" to run on a system turn
                     Scheduler.QueueAction(() => AddServer(updatedSilo), CacheValidator.SchedulingContext).Ignore();
                 }
+
             }
         }
 
